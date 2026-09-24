@@ -486,10 +486,8 @@ The wrapper exposes Claude's full model catalog. When `ANTHROPIC_API_KEY` is set
 - `claude-sonnet-4-5-20250929` — agents and coding
 - **`claude-haiku-4-5-20251001`** ⚡ Fast & cheap
 
-### Claude 4.1 & 4.0 Family
+### Claude 4.1 Family
 - `claude-opus-4-1-20250805` — upgraded Opus 4
-- `claude-opus-4-20250514` — original Opus 4
-- `claude-sonnet-4-20250514` — original Sonnet 4
 
 **Note:** Claude 3.x models are not supported by the Claude Agent SDK. The model parameter is passed to Claude Code via the SDK's model selection.
 

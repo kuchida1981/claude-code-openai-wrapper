@@ -83,15 +83,6 @@ DEFAULT_CLAUDE_MODELS = [
     "claude-haiku-4-5-20251001",  # Fast and cheap
     # Claude 4.1
     "claude-opus-4-1-20250805",  # Upgraded Opus 4
-    # Claude 4.0 Family (Original - May 2025)
-    "claude-opus-4-20250514",
-    "claude-sonnet-4-20250514",
-    # Claude 3.x Family - NOT SUPPORTED by Claude Agent SDK
-    # These models work with Anthropic API but NOT with Claude Code
-    # Uncomment only if using direct Anthropic API (not Claude Agent SDK)
-    # "claude-3-7-sonnet-20250219",
-    # "claude-3-5-sonnet-20241022",
-    # "claude-3-5-haiku-20241022",
 ]
 
 _models_override = os.getenv("CLAUDE_MODELS_OVERRIDE", "").strip()
