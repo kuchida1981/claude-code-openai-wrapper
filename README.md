@@ -314,11 +314,14 @@ cp .env.example .env
 deploy/systemd/install.sh
 ```
 
-The script generates `/etc/systemd/system/claude-wrapper.service` from
-[`deploy/systemd/claude-wrapper.service.template`](deploy/systemd/claude-wrapper.service.template),
-enables it, and starts it. Re-run it after `git pull` if the template changed,
-or after editing `.env` (it also restarts cleanly with `sudo systemctl restart
-claude-wrapper`).
+The script installs a **user-level** systemd service (`systemctl --user`) at
+`~/.config/systemd/user/claude-wrapper.service`, generated from
+[`deploy/systemd/claude-wrapper.service.template`](deploy/systemd/claude-wrapper.service.template).
+No root/sudo is needed for the service itself. It also runs `loginctl
+enable-linger` for your account so the service starts at boot and keeps
+running after you log out — without that, a `--user` service only runs while
+you have an active login session. Re-run the script after `git pull` if the
+template changed, or after editing `.env`.
 
 > **⚠️ `API_KEY` is mandatory for this mode.** The interactive API-key prompt
 > (`prompt_for_api_protection`) reads from stdin, but systemd services have no
@@ -330,10 +333,10 @@ claude-wrapper`).
 
 Useful commands:
 ```bash
-sudo systemctl status claude-wrapper    # is it running?
-sudo journalctl -u claude-wrapper -f    # tail logs
-sudo systemctl restart claude-wrapper   # after config/code changes
-sudo systemctl disable --now claude-wrapper  # stop and remove from boot
+systemctl --user status claude-wrapper    # is it running?
+journalctl --user -u claude-wrapper -f    # tail logs
+systemctl --user restart claude-wrapper   # after config/code changes
+systemctl --user disable --now claude-wrapper  # stop and remove from boot
 ```
 
 ## Docker
@@ -643,6 +646,7 @@ See `examples/session_continuity.py` for comprehensive Python examples and `exam
 - **Function calling** not supported (tools work automatically based on prompts)
 - **OpenAI parameters** not yet mapped: `temperature`, `top_p`, `max_tokens`, `logit_bias`, `presence_penalty`, `frequency_penalty`
 - **Multiple responses** (`n > 1`) not supported
+- **`/v1/responses` (OpenAI Responses API) is not implemented** — only `/v1/chat/completions`. Clients that default to the Responses API (e.g. n8n's OpenAI Chat Model node has a "Use Responses API" toggle) will get a 404 that may surface as a confusing "model not found" error; switch that client to Chat Completions mode.
 
 ### 🛣 **Planned Enhancements** 
 - [ ] **Tool configuration** - allowed/disallowed tools endpoints  
