@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Installs claude-wrapper as a systemd service on this machine.
+# Installs claude-wrapper as a user-level systemd service (systemctl --user)
+# on this machine. No sudo/root required for the service itself; the script
+# uses `loginctl enable-linger` (also no root needed for your own account on
+# most distros) so the service starts at boot and survives logout.
 #
 # Usage: deploy/systemd/install.sh
 #
@@ -11,10 +14,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TEMPLATE="${SCRIPT_DIR}/claude-wrapper.service.template"
 UNIT_NAME="claude-wrapper.service"
-UNIT_PATH="/etc/systemd/system/${UNIT_NAME}"
+UNIT_DIR="${HOME}/.config/systemd/user"
+UNIT_PATH="${UNIT_DIR}/${UNIT_NAME}"
 
 if [[ $EUID -eq 0 ]]; then
-  echo "Run this as your normal user (it uses sudo where needed), not as root." >&2
+  echo "Run this as your normal user, not as root (it's a --user service)." >&2
   exit 1
 fi
 
@@ -41,26 +45,35 @@ if [[ -z "${POETRY_BIN}" ]]; then
   exit 1
 fi
 
-RUN_USER="$(id -un)"
-RUN_GROUP="$(id -gn)"
-
 echo "Repo dir:  ${REPO_DIR}"
-echo "Run as:    ${RUN_USER}:${RUN_GROUP}"
+echo "Unit path: ${UNIT_PATH}"
 echo "Poetry:    ${POETRY_BIN}"
 
+echo ""
+echo "Installing dependencies (poetry install --no-root)..."
+( cd "${REPO_DIR}" && "${POETRY_BIN}" install --no-root )
+
+mkdir -p "${UNIT_DIR}"
+
 sed \
-  -e "s|__USER__|${RUN_USER}|g" \
-  -e "s|__GROUP__|${RUN_GROUP}|g" \
   -e "s|__HOME__|${HOME}|g" \
   -e "s|__REPO_DIR__|${REPO_DIR}|g" \
   -e "s|__POETRY_BIN__|${POETRY_BIN}|g" \
-  "${TEMPLATE}" | sudo tee "${UNIT_PATH}" > /dev/null
+  "${TEMPLATE}" > "${UNIT_PATH}"
 
-sudo systemctl daemon-reload
-sudo systemctl enable --now "${UNIT_NAME}"
+systemctl --user daemon-reload
+systemctl --user enable --now "${UNIT_NAME}"
+
+# Let the user service start at boot / survive logout without an active
+# session. Harmless to re-run if already enabled.
+loginctl enable-linger "$(whoami)" || {
+  echo "WARNING: could not enable linger for $(whoami)." >&2
+  echo "The service will stop when you log out until you run:" >&2
+  echo "  loginctl enable-linger $(whoami)" >&2
+}
 
 echo ""
-echo "Installed and started ${UNIT_NAME}."
-echo "  Status:  sudo systemctl status ${UNIT_NAME}"
-echo "  Logs:    sudo journalctl -u ${UNIT_NAME} -f"
-echo "  Restart: sudo systemctl restart ${UNIT_NAME}   (after git pull / .env changes)"
+echo "Installed and started ${UNIT_NAME} (user service)."
+echo "  Status:  systemctl --user status ${UNIT_NAME}"
+echo "  Logs:    journalctl --user -u ${UNIT_NAME} -f"
+echo "  Restart: systemctl --user restart ${UNIT_NAME}   (after git pull / .env changes)"
