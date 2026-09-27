@@ -1,0 +1,20 @@
+[Unit]
+Description=Claude Code OpenAI Wrapper
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+Group=__GROUP__
+WorkingDirectory=__REPO_DIR__
+Environment=HOME=__HOME__
+EnvironmentFile=__REPO_DIR__/.env
+ExecStart=__POETRY_BIN__ run claude-wrapper
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

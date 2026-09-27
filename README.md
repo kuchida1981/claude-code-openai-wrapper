@@ -300,6 +300,42 @@ RATE_LIMIT_HEALTH_PER_MINUTE=30
    - Specify custom port: `poetry run python main.py 9000`
    - Set in environment: `PORT=9000 poetry run python main.py`
 
+## Running as a systemd Service
+
+For an always-on deployment (e.g. a home server reachable over Tailscale from
+another host such as n8n), run the wrapper as a systemd service instead of a
+foreground terminal process.
+
+```bash
+cp .env.example .env
+# Edit .env: set API_KEY explicitly (see warning below), and any auth vars
+# (ANTHROPIC_API_KEY, or run `claude auth login` for subscription auth).
+
+deploy/systemd/install.sh
+```
+
+The script generates `/etc/systemd/system/claude-wrapper.service` from
+[`deploy/systemd/claude-wrapper.service.template`](deploy/systemd/claude-wrapper.service.template),
+enables it, and starts it. Re-run it after `git pull` if the template changed,
+or after editing `.env` (it also restarts cleanly with `sudo systemctl restart
+claude-wrapper`).
+
+> **⚠️ `API_KEY` is mandatory for this mode.** The interactive API-key prompt
+> (`prompt_for_api_protection`) reads from stdin, but systemd services have no
+> TTY attached. An `input()` call under systemd hits `EOFError` immediately
+> and silently falls back to **no authentication** — meaning anyone who can
+> reach the port (e.g. every device on your Tailscale tailnet) gets
+> unauthenticated access. The install script refuses to proceed if `API_KEY`
+> isn't set in `.env`; do not remove that check.
+
+Useful commands:
+```bash
+sudo systemctl status claude-wrapper    # is it running?
+sudo journalctl -u claude-wrapper -f    # tail logs
+sudo systemctl restart claude-wrapper   # after config/code changes
+sudo systemctl disable --now claude-wrapper  # stop and remove from boot
+```
+
 ## Docker
 
 Build and run the wrapper in a Docker container.
