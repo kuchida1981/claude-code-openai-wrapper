@@ -300,6 +300,45 @@ RATE_LIMIT_HEALTH_PER_MINUTE=30
    - Specify custom port: `poetry run python main.py 9000`
    - Set in environment: `PORT=9000 poetry run python main.py`
 
+## Running as a systemd Service
+
+For an always-on deployment (e.g. a home server reachable over Tailscale from
+another host such as n8n), run the wrapper as a systemd service instead of a
+foreground terminal process.
+
+```bash
+cp .env.example .env
+# Edit .env: set API_KEY explicitly (see warning below), and any auth vars
+# (ANTHROPIC_API_KEY, or run `claude auth login` for subscription auth).
+
+deploy/systemd/install.sh
+```
+
+The script installs a **user-level** systemd service (`systemctl --user`) at
+`~/.config/systemd/user/claude-wrapper.service`, generated from
+[`deploy/systemd/claude-wrapper.service.template`](deploy/systemd/claude-wrapper.service.template).
+No root/sudo is needed for the service itself. It also runs `loginctl
+enable-linger` for your account so the service starts at boot and keeps
+running after you log out — without that, a `--user` service only runs while
+you have an active login session. Re-run the script after `git pull` if the
+template changed, or after editing `.env`.
+
+> **⚠️ `API_KEY` is mandatory for this mode.** The interactive API-key prompt
+> (`prompt_for_api_protection`) reads from stdin, but systemd services have no
+> TTY attached. An `input()` call under systemd hits `EOFError` immediately
+> and silently falls back to **no authentication** — meaning anyone who can
+> reach the port (e.g. every device on your Tailscale tailnet) gets
+> unauthenticated access. The install script refuses to proceed if `API_KEY`
+> isn't set in `.env`; do not remove that check.
+
+Useful commands:
+```bash
+systemctl --user status claude-wrapper    # is it running?
+journalctl --user -u claude-wrapper -f    # tail logs
+systemctl --user restart claude-wrapper   # after config/code changes
+systemctl --user disable --now claude-wrapper  # stop and remove from boot
+```
+
 ## Docker
 
 Build and run the wrapper in a Docker container.
@@ -607,6 +646,7 @@ See `examples/session_continuity.py` for comprehensive Python examples and `exam
 - **Function calling** not supported (tools work automatically based on prompts)
 - **OpenAI parameters** not yet mapped: `temperature`, `top_p`, `max_tokens`, `logit_bias`, `presence_penalty`, `frequency_penalty`
 - **Multiple responses** (`n > 1`) not supported
+- **`/v1/responses` (OpenAI Responses API) is not implemented** — only `/v1/chat/completions`. Clients that default to the Responses API (e.g. n8n's OpenAI Chat Model node has a "Use Responses API" toggle) will get a 404 that may surface as a confusing "model not found" error; switch that client to Chat Completions mode.
 
 ### 🛣 **Planned Enhancements** 
 - [ ] **Tool configuration** - allowed/disallowed tools endpoints  
