@@ -308,11 +308,19 @@ foreground terminal process.
 
 ```bash
 cp .env.example .env
-# Edit .env: set API_KEY explicitly (see warning below), and any auth vars
-# (ANTHROPIC_API_KEY, or run `claude auth login` for subscription auth).
+# Edit .env: set API_KEY explicitly (see warning below), any auth vars
+# (ANTHROPIC_API_KEY, or run `claude auth login` for subscription auth),
+# and consider changing PORT away from the 8000 default (see note below).
 
 deploy/systemd/install.sh
 ```
+
+> **💡 Pick a non-default `PORT` for a long-running service.** `8000` (and
+> other common dev ports like `3000`, `5000`, `8080`, `8888`, `9000`) tends to
+> get reused for ad-hoc `--reload`/testing servers on the same machine. A
+> systemd service occupying the common one will collide with those, so pick
+> an uncommon port for the persistent deployment and point clients (e.g. an
+> n8n Base URL) at that instead.
 
 The script installs a **user-level** systemd service (`systemctl --user`) at
 `~/.config/systemd/user/claude-wrapper.service`, generated from
